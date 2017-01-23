@@ -40,6 +40,7 @@ double   convertedAngles[5];
 
 int16_t  linvals[5];
 double   impedance;
+double   distance;
 
 int16_t temperature;
 double convertedTemperature;
@@ -90,7 +91,9 @@ int main()
                                                     Conversion::codeToAngle(angles[i]));
             }
             pktData.getLin(linvals[0], linvals[1], linvals[2], linvals[3], linvals[4]);
-            impedance = Conversion
+            impedance = Conversion::measureToImpedance(linvals[0], linvals[1], linvals[2], linvals[3], linvals[4]);
+            distance = Conversion::impedancetoDistance(impedance);
+
         }
         if(errorHasHappened)
         {

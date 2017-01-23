@@ -71,3 +71,12 @@ ACK or an other message coming from the web. It knows how many nodes are
 cheating with it and then can schedule the future communications with the
 nodes by synchronizing them with a packet field telling the nodes the 
 next time in seconds they can start to communicate. 
+
+## State
+* Driver : works, tested between gateway and stm32 and RFM95 node
+* Protocol : implemented, not tested
+* synchronization : not implemented yet
+* OTT MIS : works
+* Data : encoding and decoding tested
+* Log : works
+* main : not complete, will not compile as is
