@@ -5,11 +5,22 @@
 #include <QString>
 #include <QList>
 #include "OTTMis/ottmissensor.h"
-#include <QStandardPaths>
+#include "Log/log.h"
+
+OTTMisFile::OTTMisFile()
+{
+    _hasBeenFlushed = false;
+    _stationID = 0;
+}
 
 OTTMisFile::OTTMisFile(int stationID)
 {
     _hasBeenFlushed = false;
+    _stationID = stationID;
+}
+
+void OTTMisFile::setStationID(int stationID)
+{
     _stationID = stationID;
 }
 
@@ -48,13 +59,14 @@ void OTTMisFile::insertMeasure(int sensorID, uint32_t timestamp, double value)
 void OTTMisFile::flush()
 {
     _fileName = QString("%1/%2_%3.MIS")
-                .arg(QStandardPaths::writableLocation(QStandardPaths::DesktopLocation))
+                .arg("/home/pi/Desktop")
                 .arg(_stationID, 10, 10, QChar('0'))
                 .arg(QDateTime::currentDateTime().toString("yyyyMMddHHmmss"));
     QFile file(_fileName);
     if(!file.open(QIODevice::WriteOnly))
     {
         printf("ERROR >> cannot open .MIS file for flush\n");
+        file.close();
         return;
     }
     for(OTTMisSensor * s : _sensorsList)

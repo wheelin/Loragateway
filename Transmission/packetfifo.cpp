@@ -3,6 +3,7 @@
 
 PacketFifo::PacketFifo()
 {
+    _freePkt[0] = true;
 }
 
 bool PacketFifo::isEmpty()

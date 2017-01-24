@@ -149,9 +149,12 @@
 //LORA MODES:
 #define LORA_SLEEP_MODE  ((uint8_t)0x80)
 #define LORA_STANDBY_MODE  ((uint8_t)0x81)
+#define LORA_FREQ_TX_SYNTH_MODE ((uint8_t)0x82)
 #define LORA_TX_MODE  ((uint8_t)0x83)
+#define LORA_FREQ_RX_SYNTH_MODE ((uint8_t)0x84)
 #define LORA_RX_MODE  ((uint8_t)0x85)
 #define LORA_RX_SINGLE_MODE ((uint8_t)0x86)
+#define LORA_CAD_DETECTION_MODE ((uint8_t)0x87)
 #define LORA_STANDBY_FSK_REGS_MODE  ((uint8_t)0xC1)
 
 //DIVERS MASKS
@@ -173,6 +176,7 @@ typedef void (*callback)(void);
 class Lora
 {
 public:
+
     Lora();
 
     int on();
@@ -185,6 +189,8 @@ public:
     int setOutputPower(int pwrdB);
 
     int setMode(uint8_t mode);
+
+    int getMode();
 
     int setCallbacks(void (*txDone)(), void (*rxDone)(), void (*timeout)());
     pthread_t timerThread;

@@ -23,6 +23,19 @@ public:
     static constexpr uint8_t ERR_ACK_EXPECTED_BUT_NOT_RECV = 0xF2;
     static constexpr uint8_t ERR_TIMEOUT = 0xF3;
     static constexpr uint8_t ERR_FULL_FIFO = 0xF4;
+    static constexpr uint8_t ERR_INVALID_ADDR = 0xF5;
+
+    enum RadioState {
+        Sleep,
+        Stand_by,
+        FSTx,
+        FSRx,
+        Tx,
+        RxContinuous,
+        RxSingle,
+        CAD,
+        Undefined,
+    };
 
     static GwLoraMac& instance();
 
@@ -31,6 +44,8 @@ public:
 
     bool pushData(uint8_t destAddr, uint8_t * data, uint8_t len);
     void getLastData(uint8_t &srcAddr, uint8_t * data, uint8_t &len);
+    void listen();
+    RadioState getRadioMode();
 
     static void (*_appTxDone)(void);
     static void (*_appRxDone)(void);
@@ -55,6 +70,10 @@ private:
 
     bool        _packetOnWaiting;
     uint8_t     _addressOfClientWaitingForPacket;
+
+    int         _snr;
+    int         _pktRssi;
+    int         _rssi;
 };
 
 #endif // GWMAC_H

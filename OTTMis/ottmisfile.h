@@ -9,7 +9,9 @@
 class OTTMisFile
 {
 public:
+    OTTMisFile();
     OTTMisFile(int stationID);
+    void setStationID(int stationID);
     QString getFileName();
     void insertMeasure(int sensorID, uint32_t timestamp, double value);
     void flush();

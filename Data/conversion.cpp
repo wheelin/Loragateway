@@ -52,3 +52,13 @@ double Conversion::impedancetoDistance(double impedance)
             IMP_TO_DIST_COEFFS[4] * impedance         +
             IMP_TO_DIST_COEFFS[5];
 }
+
+double Conversion::accelerationCodeToG(int16_t accCode)
+{
+    return (((double)(accCode))*MG_PER_LSB)/1000.0;
+}
+
+double Conversion::magCodeToGauss(int16_t magCode)
+{
+    return (((double)(magCode))*MGAUSS_PER_LSB) * 1000.0;
+}

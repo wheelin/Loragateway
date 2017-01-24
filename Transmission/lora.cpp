@@ -214,6 +214,12 @@ int Lora::setMode(uint8_t mode)
     }
 }
 
+int Lora::getMode()
+{
+    uint8_t tmp = readReg(REG_OP_MODE);
+    return tmp & 0x87;
+}
+
 int Lora::setCallbacks(void (*txDone)(void), callback rxDone, callback timeout)
 {
     Lora::_txDone = txDone;

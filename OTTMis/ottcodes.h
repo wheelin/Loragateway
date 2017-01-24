@@ -1,7 +1,11 @@
 #ifndef OTTCODES_H
 #define OTTCODES_H
 
+
+
 class OTTCode {
+
+public:
     static constexpr int BASE_STATION_CODE  = 1234500000;
 
     static constexpr int BAT_LVL_CODE       = 1;
@@ -13,7 +17,7 @@ class OTTCode {
     static constexpr int THETA2_CODE        = 22;
     static constexpr int ALPHA_CODE         = 23;
 
-    static constexpr int ANGLES_CODES[] = {
+    static constexpr int ANGLES_CODES[5] = {
         11, 12, 21, 22, 23
     };
 
@@ -22,11 +26,11 @@ class OTTCode {
     static constexpr int ACC_Z_CODE         = 112;
 
     static constexpr int MAG_X_CODE         = 120;
-    static constexpr int MAG_Y_CODE         = 131;
-    static constexpr int MAG_Z_CODE         = 142;
+    static constexpr int MAG_Y_CODE         = 121;
+    static constexpr int MAG_Z_CODE         = 122;
 
-    static constexpr int ACC_MAG_CODES[] = {
-        110,111,112,120,131,142
+    static constexpr int ACC_MAG_CODES[6] = {
+        110,111,112,120,121,122
     };
 
     static constexpr int LINEAR_CODE        = 200;
@@ -37,5 +41,8 @@ class OTTCode {
 
 
 };
+
+constexpr int OTTCode::ANGLES_CODES[5];
+constexpr int OTTCode::ACC_MAG_CODES[6];
 
 #endif // OTTCODES_H

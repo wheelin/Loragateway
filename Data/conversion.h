@@ -15,10 +15,16 @@ public:
         3e-10, -4e-7, 0.0002, -0.0491, 6.1236, -136.91
     };
 
+    static constexpr double MG_PER_LSB = 15.63; // -+ 2g and low power mode, LSM303c
+    static constexpr double MGAUSS_PER_LSB = 1.5;
+
     static double codeToAngle(uint16_t code);
     static double correctAngle(double a);
     static double measureToImpedance(int16_t cr, int16_t ci, int16_t mr, int16_t mi, int16_t r);
     static double impedancetoDistance(double impedance);
+
+    static double accelerationCodeToG(int16_t accCode);
+    static double magCodeToGauss(int16_t magCode);
 
     static double refAngles[5];
     static double refImpedance;

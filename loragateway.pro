@@ -28,5 +28,5 @@ HEADERS += \
     OTTMis/ottmissensor.h \
     Data/conversion.h \
     Log/log.h \
-    OTTMis/OTTCodes.h
+    OTTMis/ottcodes.h
 
