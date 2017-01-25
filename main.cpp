@@ -34,6 +34,8 @@ void errorCallback(uint8_t errCode);
 // sensors data handling variables
 SensorData pktData;
 OTTMisFile dataFile[10];
+uint8_t recordsNbr[10];
+#define MAX_RECORDS_PER_FILE 10
 uint8_t nodeAddress;
 uint8_t dataLength;
 
@@ -114,8 +116,17 @@ int main()
 
             pktData.getBatLvl(batteryLevel);
             dataFile[nodeIdx].insertMeasure(OTTCode::BAT_LVL_CODE, pktData.getTimeStamp(), (double)batteryLevel);
-            dataFile[nodeIdx].flush();
-            Log::instance().message(Log::Severity::Note, false, "OTT MIS file has been written");
+            if(recordsNbr[nodeIdx] == MAX_RECORDS_PER_FILE)
+            {
+                dataFile[nodeIdx].flush();
+                recordsNbr[nodeIdx] = 0;
+                Log::instance().message(Log::Severity::Success, false, "OTT MIS file has been written");
+            }
+            else
+            {
+                Log::instance().message(Log::Severity::Note, false, "OTT MIS records added");
+                recordsNbr[nodeIdx]++;
+            }
         }
         if(errorHasHappened)
         {

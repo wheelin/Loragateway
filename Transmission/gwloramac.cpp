@@ -135,10 +135,12 @@ void GwLoraMac::_macTxDone()
     Log::instance().message(Log::Severity::Success, false, "Entering tx done call back");
     if(instance()._packetOnWaiting)
     { // send packet when the radio module is ready
+        instance()._packetOnWaiting = false;
         instance()._sendPacket[instance()._addressOfClientWaitingForPacket].setTimestamp((uint32_t)time(0));
         instance()._radio.send(instance()._sendPacket[instance()._addressOfClientWaitingForPacket].getBufferPtr(),
                                          instance()._sendPacket[instance()._addressOfClientWaitingForPacket].getPacketLength());
         instance()._nextPktIsACK[instance()._addressOfClientWaitingForPacket] = true;
+        return;
     }
     if(_appTxDone != NULL)
     {
@@ -220,9 +222,11 @@ void GwLoraMac::_macRxDone()
 
     instance()._sendPacket[currentNodeIdx].clearPayload();
     instance()._sendPacket[currentNodeIdx].setDstAddress(currentAddr);
-    instance()._sendPacket[currentNodeIdx].setSrcAddress(GW_ADDR);
+    instance()._sendPacket[currentNodeIdx].setSrcAddress(GW_ADDR+1);
     instance()._sendPacket[currentNodeIdx].setAsACK(true);
     instance()._sendPacket[currentNodeIdx].setTimestamp((uint32_t)time(0));
+    uint8_t id[] = {(uint8_t)((pkt.getPacketID() >> 8) & 0xFF), (uint8_t)((pkt.getPacketID()) & 0xFF)};
+    instance()._sendPacket[currentNodeIdx].setPayload(id, 2);
     if(instance()._packetsForClientFifo[currentNodeIdx].isEmpty())
     { // no packet has to be sent to the current client
       // so the gateway must send ACK_END to tell the client this conversation is

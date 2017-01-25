@@ -416,10 +416,14 @@ void Lora::readBuf(uint8_t reg, uint8_t *buf, uint8_t len)
 
 void Lora::onDIO0Interrupt()
 {
-    uint8_t previousState = readReg(REG_OP_MODE);
+    //uint8_t previousState = readReg(REG_OP_MODE);
     writeReg(REG_OP_MODE, LORA_STANDBY_MODE);
     uint8_t tmp = readReg(REG_IRQ_FLAGS);
-    if((tmp & IRQ_RX_DONE_MASK) != 0 && _rxDone != NULL)
+    if((tmp & IRQ_RX_TIMEOUT_MASK) != 0 && _timeout != NULL)
+    {
+        _timeout();
+    }
+    else if((tmp & IRQ_RX_DONE_MASK) != 0 && _rxDone != NULL)
     {
         _rxDone();
     }
@@ -429,7 +433,7 @@ void Lora::onDIO0Interrupt()
     }
     // clear interrupt flags
     writeReg(REG_IRQ_FLAGS, 0xFF);
-    writeReg(REG_OP_MODE, previousState);
+    //writeReg(REG_OP_MODE, previousState);
 }
 
 void Lora::reset()
