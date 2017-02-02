@@ -6,7 +6,6 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "Log/log.h"
 
 void (*GwLoraMac::_appTxDone)() = 0;
 void (*GwLoraMac::_appRxDone)() = 0;
