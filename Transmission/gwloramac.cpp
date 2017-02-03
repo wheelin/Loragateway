@@ -31,32 +31,32 @@ void GwLoraMac::initialize(void (*appTxDone)(), void (*appRxDone)(),
 
     if((ret = _radio.on()))
     {
-        Log::instance().message(Log::Severity::Error, false, "cannot initialize radio : %d", ret);
+        printf("cannot initialize radio : %d", ret);
         exit(-1);
     }
     if((ret = _radio.setMainParameters(CH_11_868, BW_500, CR_5, SF_12)) != 0)
     {
-        Log::instance().message(Log::Severity::Error, false, "cannot set radio main parameters. Code error : %d", ret);
+        printf("cannot set radio main parameters. Code error : %d", ret);
         exit(-1);
     }
     if((ret = _radio.enableCRCCheck(true)) != 0)
     {
-        Log::instance().message(Log::Severity::Error, false, "Cannot enable crc check : %d", ret);
+        printf("Cannot enable crc check : %d", ret);
         exit(-1);
     }
     if((ret = _radio.enableImplicitHeader(false)) != 0)
     {
-        Log::instance().message(Log::Severity::Error, false, "Cannot disable implicit header : %d", ret);
+        printf("Cannot disable implicit header : %d", ret);
         exit(-1);
     }
     if((ret = _radio.setOutputPower(15)) != 0)
     {
-        Log::instance().message(Log::Severity::Error, false, "Cannot set output power : %d", ret);
+        printf("Cannot set output power : %d", ret);
         exit(-1);
     }
     if((ret = _radio.setCallbacks(_macTxDone, _macRxDone, _macTimeout)) != 0)
     {
-        Log::instance().message(Log::Severity::Error, false, "Cannot set callbacks : %d", ret);
+        printf("Cannot set callbacks : %d", ret);
         exit(-1);
     }
 
@@ -78,7 +78,7 @@ bool GwLoraMac::pushData(uint8_t destAddr, uint8_t *data, uint8_t len)
 
     if(!_packetsForClientFifo[destAddr].pushPacket(&pkt))
     {
-        Log::instance().message(Log::Severity::Error, false, "fifo %d is full of messages", destAddr);
+        printf("fifo %d is full of messages", destAddr);
         if(_appError != NULL)
         {
             _appError(ERR_FULL_FIFO);
@@ -90,13 +90,13 @@ bool GwLoraMac::pushData(uint8_t destAddr, uint8_t *data, uint8_t len)
 
 void GwLoraMac::getLastData(uint8_t &srcAddr, uint8_t * data, uint8_t &len)
 {
-    Log::instance().message(Log::Severity::Note, false, "getting packet into application space");
+    printf("getting packet into application space");
     srcAddr = instance()._recvPacket.getSrcAddress();
-    Log::instance().message(Log::Severity::Note, false, "srcAddr : 0x%02x", srcAddr);
+    printf("srcAddr : 0x%02x", srcAddr);
     len = instance()._recvPacket.getPayloadLength();
-    Log::instance().message(Log::Severity::Note, false, "len : %d bytes", len);
+    printf("len : %d bytes", len);
     memcpy(data, instance()._recvPacket.getPayloadPtr(), len);
-    Log::instance().message(Log::Severity::Note, false, "finished getting packet into application space");
+    printf("finished getting packet into application space");
 }
 
 void GwLoraMac::listen()
@@ -131,7 +131,7 @@ GwLoraMac::RadioState GwLoraMac::getRadioMode()
 
 void GwLoraMac::_macTxDone()
 {
-    Log::instance().message(Log::Severity::Success, false, "Entering tx done call back");
+    printf("Entering tx done call back");
     if(instance()._packetOnWaiting)
     { // send packet when the radio module is ready
         instance()._packetOnWaiting = false;
@@ -155,7 +155,7 @@ void GwLoraMac::_macRxDone()
     Packet pkt;
     if((ret = instance()._radio.getReceivedData(pkt.getBufferPtr())) != 0)
     {
-        Log::instance().message(Log::Severity::Error, false, "cannot receive data from the radio module : %d", ret);
+        printf("cannot receive data from the radio module : %d", ret);
         if(_appError != NULL)
         {
             _appError(ret);
@@ -165,19 +165,19 @@ void GwLoraMac::_macRxDone()
     }
     else
     {
-        Log::instance().message(Log::Severity::Success, false, "packet received");
+        printf("packet received");
         instance()._snr = instance()._radio.getSNR();
-        Log::instance().message(Log::Severity::Note, false, "Radio SNR : %d dBm", instance()._snr);
+        printf("Radio SNR : %d dBm", instance()._snr);
         instance()._pktRssi = instance()._radio.getPktRSSI();
-        Log::instance().message(Log::Severity::Note, false, "Packet RSSI : %d dBm", instance()._pktRssi);
+        printf("Packet RSSI : %d dBm", instance()._pktRssi);
         instance()._rssi = instance()._radio.getRSSI();
-        Log::instance().message(Log::Severity::Note, false, "RSSI : %d dBm", instance()._rssi);
+        printf("RSSI : %d dBm", instance()._rssi);
     }
     uint8_t currentAddr = pkt.getSrcAddress();
-    Log::instance().message(Log::Severity::Note, false, "packet received from node address : 0x%02x", currentAddr);
+    printf("packet received from node address : 0x%02x", currentAddr);
     if(currentAddr > MAX_CLIENT_ADDRESS)
     {
-        Log::instance().message(Log::Severity::Error, false, "node address is invalid");
+        printf("node address is invalid");
         if(_appError != NULL)
         {
             _appError(ERR_INVALID_ADDR);
@@ -188,7 +188,7 @@ void GwLoraMac::_macRxDone()
     uint8_t currentNodeIdx = currentAddr - 1;
     if(pkt.isACK() && !instance()._nextPktIsACK[currentNodeIdx])
     { // ack expected but no ack came back
-        Log::instance().message(Log::Severity::Error, false, "ACK expected but packet was not ack");
+        printf("ACK expected but packet was not ack");
         if(_appError != NULL)
         {
             _appError(ERR_ACK_NOT_EXPECTED_BUT_RECV);
@@ -198,7 +198,7 @@ void GwLoraMac::_macRxDone()
     }
     else if(!pkt.isACK() && instance()._nextPktIsACK[currentNodeIdx])
     { // ack not expected but received
-        Log::instance().message(Log::Severity::Error, false, "ack not expected but received");
+        printf("ack not expected but received");
         if(_appError != NULL)
         {
             _appError(ERR_ACK_EXPECTED_BUT_NOT_RECV);
@@ -208,13 +208,13 @@ void GwLoraMac::_macRxDone()
     }
     else if(pkt.isACK() && instance()._nextPktIsACK[currentNodeIdx])
     { // ack expected and received. this is end of this session
-        Log::instance().message(Log::Severity::Success, false, "ACK has been received and was expected");
+        printf("ACK has been received and was expected");
         instance().listen();
         return;
     }
     else
     { // this is a data packet, so we put this as the next packet handled by the application
-        Log::instance().message(Log::Severity::Success, false, "data packet received correctly, ID : %d", pkt.getPacketID());
+        printf("data packet received correctly, ID : %d", pkt.getPacketID());
         memcpy(instance()._recvPacket.getBufferPtr(), pkt.getBufferPtr(), pkt.getPacketLength());
         receivedPacketForApp = true;
     }
@@ -230,14 +230,14 @@ void GwLoraMac::_macRxDone()
     { // no packet has to be sent to the current client
       // so the gateway must send ACK_END to tell the client this conversation is
       // over.
-        Log::instance().message(Log::Severity::Note, false, "no packet for this node, sending ACK");
+        printf("no packet for this node, sending ACK");
         instance()._sendPacket[currentNodeIdx].setAsLastSessionPacket(true);
         instance()._radio.send(instance()._sendPacket[currentNodeIdx].getBufferPtr(), instance()._sendPacket[currentNodeIdx].getPacketLength());
     }
     else
     { // send ACK_NEND and then, set next packet to send as a waiting packet. It waits for the _ACK_NEND packet
       // to be sent by the radio module and then is is sent in the _macTxDone function
-        Log::instance().message(Log::Severity::Note, false, "Packet waiting, sending NEND_ACK");
+        printf("Packet waiting, sending NEND_ACK");
         instance()._sendPacket[currentNodeIdx].setAsLastSessionPacket(false);
         instance()._radio.send(instance()._sendPacket[currentNodeIdx].getBufferPtr(), instance()._sendPacket[currentNodeIdx].getPacketLength());
         // store the next packet into the packet to send container
