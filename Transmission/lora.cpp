@@ -8,27 +8,27 @@
 #include <pthread.h>
 #include <unistd.h>
 
-void (*Lora::_txDone)() = 0;
-void (*Lora::_rxDone)() = 0;
-void (*Lora::_timeout)() = 0;
+void (*lora::_txDone)() = 0;
+void (*lora::_rxDone)() = 0;
+void (*lora::_timeout)() = 0;
 
-Lora::Lora()
+lora::lora()
 {
-    _channel = CH_10_868;
-    _bandwidth = BW_125;
-    _codingRate = CR_5;
-    _spreadingFactor = SF_12;
-    _CRCCheckEnabled = true;
-    _implicitHeaderEnabled = true;
-    _pwrdB = 15;
-    _continuousReceivingEnabled = false;
+    ch = CH_10_868;
+    bw = BW_125;
+    cr = CR_5;
+    sf = SF_12;
+    crc_check_enabled = true;
+    implicit_header_enabled = true;
+    pwr_db = 15;
+    listening = false;
 }
 
-int Lora::on()
+int lora::on()
 {
     wiringPiSetupPhys();
-    _spiFd = wiringPiSPISetupMode(0, SPI_SPEED, SPI_MODE);
-    if(_spiFd < 0)
+    spi_fd = wiringPiSPISetupMode(0, SPI_SPEED, SPI_MODE);
+    if(spi_fd < 0)
     {
         return -1;
     }
@@ -37,108 +37,108 @@ int Lora::on()
     pinMode(RST_PIN, INPUT);
     wiringPiISR(DIO0_PIN, INT_EDGE_RISING, onDIO0Interrupt);
 
-    memset(_lastReceivedBuffer, 0, MAX_DATA_LEN);
-    memset(_lastSentBuffer, 0, MAX_DATA_LEN);
+    memset(last_recv_buf, 0, MAX_DATA_LEN);
+    memset(last_sent_buf, 0, MAX_DATA_LEN);
 
     reset();
 
     // put module in fsk ook sleep mode
-    writeReg(REG_OP_MODE, 0x00);
+    write_reg(REG_OP_MODE, 0x00);
     // put module in lora mode
-    writeReg(REG_OP_MODE, 0x80);
+    write_reg(REG_OP_MODE, 0x80);
     // put module in sleep mode, lora side
-    writeReg(REG_OP_MODE, LORA_SLEEP_MODE);
+    write_reg(REG_OP_MODE, LORA_SLEEP_MODE);
     // set overcurrent protection on but leave overcurrent protection value default
-    uint8_t tmp = readReg(REG_OCP);
-    writeReg(REG_OCP, tmp | 0x20);
+    uint8_t tmp = read_reg(REG_OCP);
+    write_reg(REG_OCP, tmp | 0x20);
 
     // set fifo base pointers to 0x00, we use the full fifo for each operation
-    writeReg(REG_FIFO_TX_BASE_ADDR, 0x00);
-    writeReg(REG_FIFO_RX_BASE_ADDR, 0x00);
+    write_reg(REG_FIFO_TX_BASE_ADDR, 0x00);
+    write_reg(REG_FIFO_RX_BASE_ADDR, 0x00);
 
     // set preamble length to its custom default value
-    writeReg(REG_PREAMBLE_MSB_LORA, (uint8_t)((PREAMBLE_LEN >> 8) & 0xFF));
-    writeReg(REG_PREAMBLE_LSB_LORA, (uint8_t)(PREAMBLE_LEN & 0xFF));
+    write_reg(REG_PREAMBLE_MSB_LORA, (uint8_t)((PREAMBLE_LEN >> 8) & 0xFF));
+    write_reg(REG_PREAMBLE_LSB_LORA, (uint8_t)(PREAMBLE_LEN & 0xFF));
 
     // disable frequency hopping
-    writeReg(REG_HOP_PERIOD, 0x00);
+    write_reg(REG_HOP_PERIOD, 0x00);
 
     // set this node as static node, lna gain set by register
-    writeReg(REG_MODEM_CONFIG3, 0x00);
+    write_reg(REG_MODEM_CONFIG3, 0x00);
 
     // set max payload length to 255
-    writeReg(REG_MAX_PAYLOAD_LENGTH, 0xFF);
+    write_reg(REG_MAX_PAYLOAD_LENGTH, 0xFF);
 
     return 0;
 }
 
-int Lora::off()
+int lora::off()
 {
     return 0;
 }
 
-int Lora::setMainParameters(uint32_t chan, uint8_t bandwidth,
-                            uint8_t codingRate, uint8_t spreadingFactor)
+int lora::set_main_parameters(uint32_t ch, uint8_t bw,
+                            uint8_t cr, uint8_t sf)
 {
     uint8_t tmp;
 
-    setMode(LORA_SLEEP_MODE);
+    set_mode(LORA_SLEEP_MODE);
     // check is chan argument is valid
-    if(chan != CH_10_868 && chan != CH_11_868 &&
-            chan != CH_12_868 && chan != CH_13_868 &&
-            chan != CH_14_868 && chan != CH_15_868 &&
-            chan != CH_16_868 && chan != CH_17_868)
+    if(ch != CH_10_868 && ch != CH_11_868 &&
+            ch != CH_12_868 && ch != CH_13_868 &&
+            ch != CH_14_868 && ch != CH_15_868 &&
+            ch != CH_16_868 && ch != CH_17_868)
     {
         return -1;
     }
     else
     {
-        writeReg(REG_FRF_MSB, (uint8_t)((chan >> 16) & 0xFF));
-        writeReg(REG_FRF_MID, (uint8_t)((chan >> 8)  & 0xFF));
-        writeReg(REG_FRF_LSB, (uint8_t)(chan & 0xFF));
+        write_reg(REG_FRF_MSB, (uint8_t)((ch >> 16) & 0xFF));
+        write_reg(REG_FRF_MID, (uint8_t)((ch >> 8)  & 0xFF));
+        write_reg(REG_FRF_LSB, (uint8_t)(ch & 0xFF));
 
-        _channel = chan;
+        this->ch = ch;
     }
 
-    if(bandwidth < BW_125 || bandwidth > BW_500 || codingRate < 0x01 || codingRate > 0x04)
+    if(bw < BW_125 || bw > BW_500 || cr < 0x01 || cr > 0x04)
     {
         return -2;
     }
     else
     {
-        tmp = readReg(REG_MODEM_CONFIG1);
+        tmp = read_reg(REG_MODEM_CONFIG1);
         tmp &= 0x0F;
-        tmp |= (bandwidth << 4);
+        tmp |= (bw << 4);
         tmp &= 0xF1;
         tmp |= (codingRate << 1);
-        writeReg(REG_MODEM_CONFIG1, tmp);
+        write_reg(REG_MODEM_CONFIG1, tmp);
 
-        _bandwidth = bandwidth;
-        _codingRate = codingRate;
+        this->bw = bw;
+        this->cr = codingRate;
     }
 
-    if(spreadingFactor < SF_7 || spreadingFactor > SF_12)
+    if(sf < SF_7 || sf > SF_12)
     {
         return -3;
     }
     else
     {
-        tmp = readReg(REG_MODEM_CONFIG2);
+        tmp = read_reg(REG_MODEM_CONFIG2);
         tmp &= 0x0F;
-        tmp |= (spreadingFactor << 4);
-        writeReg(REG_MODEM_CONFIG2, tmp);
-        _spreadingFactor = spreadingFactor;
+        tmp |= (sf << 4);
+        write_reg(REG_MODEM_CONFIG2, tmp);
+        this->sf = sf;
     }
 
     switch (bandwidth) {
     case BW_125:
-        _symbRate = 125000/pow(2, (double)(spreadingFactor));
+        symb_rate = 125000/pow(2, (double)(sf));
         break;
     case BW_250:
-        _symbRate = 250000/pow(2, (double)(spreadingFactor));
+        symb_rate = 250000/pow(2, (double)(sf));
         break;
     case BW_500:
-        _symbRate = 500000/pow(2, (double)(spreadingFactor));
+        symb_rate = 500000/pow(2, (double)(sf));
         break;
     default:
         return -4;
@@ -148,9 +148,9 @@ int Lora::setMainParameters(uint32_t chan, uint8_t bandwidth,
     return 0;
 }
 
-int Lora::enableCRCCheck(bool state)
+int lora::enable_crc_check(bool state)
 {
-    uint8_t tmp = readReg(REG_MODEM_CONFIG2);
+    uint8_t tmp = read_reg(REG_MODEM_CONFIG2);
     if(state == true)
     {
         tmp |= (1 << 2);
@@ -159,14 +159,14 @@ int Lora::enableCRCCheck(bool state)
     {
         tmp &= ~(1 << 2);
     }
-    writeReg(REG_MODEM_CONFIG2, tmp);
-    _CRCCheckEnabled = state;
+    write_reg(REG_MODEM_CONFIG2, tmp);
+    crc_check_enabled = state;
     return 0;
 }
 
-int Lora::enableImplicitHeader(bool state)
+int lora::enable_implicit_header(bool state)
 {
-    uint8_t tmp = readReg(REG_MODEM_CONFIG1);
+    uint8_t tmp = read_reg(REG_MODEM_CONFIG1);
     if(state == true)
     {
         tmp |= 0x01;
@@ -175,12 +175,12 @@ int Lora::enableImplicitHeader(bool state)
     {
         tmp &= 0xFE;
     }
-    writeReg(REG_MODEM_CONFIG1, tmp);
-    _implicitHeaderEnabled = state;
+    write_reg(REG_MODEM_CONFIG1, tmp);
+    implicit_header_enabled = state;
     return 0;
 }
 
-int Lora::setOutputPower(int pwrdB)
+int lora::set_output_power(int pwrdB)
 {
     uint8_t out, tmp;
     // we only use PA_BOOST
@@ -189,17 +189,17 @@ int Lora::setOutputPower(int pwrdB)
         pwrdB = 20;
     }
     out = (pwrdB - 2) & 0x0F;
-    tmp = readReg(REG_PA_CONFIG);
+    tmp = read_reg(REG_PA_CONFIG);
     // use PA_BOOST
     tmp |= 0x80;
     tmp &= 0xF0;
     tmp |= (out & 0x0F);
-    writeReg(REG_PA_CONFIG, tmp);
+    write_reg(REG_PA_CONFIG, tmp);
     _pwrdB = pwrdB;
     return 0;
 }
 
-int Lora::setMode(uint8_t mode)
+int lora::set_mode(uint8_t mode)
 {
     if(mode != LORA_SLEEP_MODE && mode != LORA_STANDBY_MODE &&
             mode != LORA_TX_MODE && mode != LORA_RX_MODE &&
@@ -209,113 +209,113 @@ int Lora::setMode(uint8_t mode)
     }
     else
     {
-        writeReg(REG_OP_MODE, mode);
+        write_reg(REG_OP_MODE, mode);
         return 0;
     }
 }
 
-int Lora::getMode()
+int lora::get_mode()
 {
-    uint8_t tmp = readReg(REG_OP_MODE);
+    uint8_t tmp = read_reg(REG_OP_MODE);
     return tmp & 0x87;
 }
 
-int Lora::setCallbacks(void (*txDone)(void), callback rxDone, callback timeout)
+int lora::set_callbacks(void (*tx_done)(void), void (*rx_done)(void), void (*timeout)(void))
 {
-    Lora::_txDone = txDone;
-    Lora::_rxDone = rxDone;
-    Lora::_timeout = timeout;
+    lora::tx_done = txDone;
+    lora::rx_done = rxDone;
+    lora::timeout = timeout;
     return 0;
 }
 
-void *Lora::timerThreadFunction(void *timeout)
+void *lora::timer_thread_fn(void *timeout)
 {
     uint32_t tm = (uint32_t)timeout;
     usleep(tm * 1000);
-    _timeout();
+    timeout();
     pthread_exit(0);
 }
 
-int Lora::send(uint8_t *buf, uint8_t length)
+int lora::send(uint8_t *buf, uint8_t length)
 {
     // go in standby mode to write the fifo
-    writeReg(REG_OP_MODE, LORA_STANDBY_MODE);
+    write_reg(REG_OP_MODE, LORA_STANDBY_MODE);
 
     // clear all flags in interrupt register
-    writeReg(REG_IRQ_FLAGS, 0xFF);
+    write_reg(REG_IRQ_FLAGS, 0xFF);
 
     // set buffer length
-    writeReg(REG_PAYLOAD_LENGTH_LORA, length);
+    write_reg(REG_PAYLOAD_LENGTH_LORA, length);
 
     // write data into the fifo at address 0x00
-    writeReg(REG_FIFO_TX_BASE_ADDR, 0x00);
-    writeReg(REG_FIFO_ADDR_PTR, 0x00);
+    write_reg(REG_FIFO_TX_BASE_ADDR, 0x00);
+    write_reg(REG_FIFO_ADDR_PTR, 0x00);
     writeBuf(REG_FIFO, buf, length);
 
     // set dio mapped to function txDone
-    setDio0Mapping(DIO0_FN_TX_DONE);
+    set_dio0_mapping(DIO0_FN_TX_DONE);
 
     // set module in tx mode
-    setMode(LORA_TX_MODE);
+    set_mode(LORA_TX_MODE);
 
     return 0;
 }
 
-int Lora::setInTimedReceiveMode(uint32_t timeout)
+int lora::listen_timeout(uint32_t timeout)
 {
     int ret;
     // set RF rx block parameters
-    writeReg(REG_PA_RAMP, 0x09);
+    write_reg(REG_PA_RAMP, 0x09);
     // set max lna gain
-    writeReg(REG_LNA, 0x23);
+    write_reg(REG_LNA, 0x23);
     // set fifo address pointer at 0x00
-    writeReg(REG_FIFO_ADDR_PTR, 0x00);
+    write_reg(REG_FIFO_ADDR_PTR, 0x00);
     // set dio0 function
-    setDio0Mapping(DIO0_FN_RX_DONE);
+    set_dio0_mapping(DIO0_FN_RX_DONE);
 
     // put module in continuous rx mode
-    writeReg(REG_OP_MODE, LORA_RX_MODE);
+    write_reg(REG_OP_MODE, LORA_RX_MODE);
 
     // launch timer thread
     ret = pthread_create(&timerThread, NULL, timerThreadFunction, ((void *)timeout));
     if(ret)
     {
-        writeReg(REG_OP_MODE, LORA_STANDBY_MODE);
+        write_reg(REG_OP_MODE, LORA_STANDBY_MODE);
         return -1;
     }
 
     return 0;
 }
 
-int Lora::setInContinuousReceiveMode()
+int lora::listen()
 {
     // set RF rx block parameters
-    writeReg(REG_PA_RAMP, 0x09);
+    write_reg(REG_PA_RAMP, 0x09);
     // set max lna gain
-    writeReg(REG_LNA, 0x23);
+    write_reg(REG_LNA, 0x23);
     // set fifo address pointer at 0x00
-    writeReg(REG_FIFO_ADDR_PTR, 0x00);
+    write_reg(REG_FIFO_ADDR_PTR, 0x00);
     // set dio0 function to rxDone
     setDio0Mapping(DIO0_FN_RX_DONE);
 
     // clear all irq flags
-    writeReg(REG_IRQ_FLAGS, 0x00);
+    write_reg(REG_IRQ_FLAGS, 0x00);
 
     // put module in continuous rx mode
-    writeReg(REG_OP_MODE, LORA_RX_MODE);
+    write_reg(REG_OP_MODE, LORA_RX_MODE);
     return 0;
 }
 
-int Lora::getReceivedData(uint8_t *data)
+int lora::get_received_data(uint8_t *data)
 {
-    uint8_t tmp = readReg(REG_IRQ_FLAGS);
+    uint8_t tmp = read_reg(REG_IRQ_FLAGS);
     if ((tmp & IRQ_PAYLOAD_CRC_ERROR_MASK) != 0)
     {
         return -1;
     }
 
     // read number of bytes received
-    int payloadLen = readReg(REG_RX_NB_BYTES);
+    int payloadLen = read_reg(REG_RX_NB_BYTES);
     if(payloadLen == 0)
     {
         // if the number of bytes received is zero,
@@ -323,42 +323,42 @@ int Lora::getReceivedData(uint8_t *data)
         return -2;
     }
     // read addr of the last received packet
-    int lastAddr = readReg(REG_FIFO_RX_CURRENT_ADDR);
+    int lastAddr = read_reg(REG_FIFO_RX_CURRENT_ADDR);
     // set pointer to the last addr
-    writeReg(REG_FIFO_ADDR_PTR, lastAddr);
+    write_reg(REG_FIFO_ADDR_PTR, lastAddr);
     // read the number of bytes received and put into buffer
-    readBuf(REG_FIFO, data, payloadLen);
+    read_buf(REG_FIFO, data, payloadLen);
 
     return 0;
 }
 
-int Lora::getSNR()
+int lora::get_snr()
 {
-    int tmp = (int)(readReg(REG_PKT_SNR_VALUE));
-    _snr = tmp/4;
-    return _snr;
+    int tmp = (int)(read_reg(REG_PKT_SNR_VALUE));
+    snr = tmp/4;
+    return snr;
 }
 
-int Lora::getPktRSSI()
+int lora::get_pkt_rssi()
 {
-    int tmp = (int)(readReg(REG_PKT_RSSI_VALUE));
-    _pktRssi = tmp - 137;
-    return _pktRssi;
+    int tmp = (int)(read_reg(REG_PKT_RSSI_VALUE));
+    pkt_rssi = tmp - 137;
+    return pkt_rssi;
 }
 
-int Lora::getRSSI()
+int lora::get_rssi()
 {
-    int tmp = (int)(readReg(REG_RSSI_VALUE_LORA));
-    _rssi = tmp - 137;
-    return _rssi;
+    int tmp = (int)(read_reg(REG_RSSI_VALUE_LORA));
+    rssi = tmp - 137;
+    return rssi;
 }
 
-void Lora::setDio0Mapping(uint8_t fn)
+void lora::set_dio0_mapping(uint8_t fn)
 {
 
-    uint8_t previousMode = readReg(REG_OP_MODE);
-    writeReg(REG_OP_MODE, LORA_STANDBY_FSK_REGS_MODE);
-    uint8_t tmp = readReg(REG_DIO_MAPPING1);
+    uint8_t previousMode = read_reg(REG_OP_MODE);
+    write_reg(REG_OP_MODE, LORA_STANDBY_FSK_REGS_MODE);
+    uint8_t tmp = read_reg(REG_DIO_MAPPING1);
     switch (fn)
     {
     case DIO0_FN_RX_DONE:
@@ -372,11 +372,11 @@ void Lora::setDio0Mapping(uint8_t fn)
         tmp &= 0x3F;
         break;
     }
-    writeReg(REG_DIO_MAPPING1, tmp);
-    writeReg(REG_OP_MODE, previousMode);
+    write_reg(REG_DIO_MAPPING1, tmp);
+    write_reg(REG_OP_MODE, previousMode);
 }
 
-void Lora::writeReg(uint8_t reg, uint8_t data)
+void lora::write_reg(uint8_t reg, uint8_t data)
 {
     uint8_t tmp = reg | 0x80;
     digitalWrite(CS_PIN, LOW);
@@ -385,7 +385,7 @@ void Lora::writeReg(uint8_t reg, uint8_t data)
     digitalWrite(CS_PIN, HIGH);
 }
 
-void Lora::writeBuf(uint8_t reg, uint8_t *buf, uint8_t len)
+void lora::write_buf(uint8_t reg, uint8_t *buf, uint8_t len)
 {
     uint8_t tmp = reg | 0x80;
     digitalWrite(CS_PIN, LOW);
@@ -394,7 +394,7 @@ void Lora::writeBuf(uint8_t reg, uint8_t *buf, uint8_t len)
     digitalWrite(CS_PIN, HIGH);
 }
 
-uint8_t Lora::readReg(uint8_t reg)
+uint8_t lora::read_reg(uint8_t reg)
 {
     uint8_t tmp = reg & 0x7F;
     digitalWrite(CS_PIN, LOW);
@@ -405,7 +405,7 @@ uint8_t Lora::readReg(uint8_t reg)
     return tmp;
 }
 
-void Lora::readBuf(uint8_t reg, uint8_t *buf, uint8_t len)
+void lora::read_buf(uint8_t reg, uint8_t *buf, uint8_t len)
 {
     uint8_t tmp = reg & 0x7F;
     digitalWrite(CS_PIN, LOW);
@@ -414,11 +414,11 @@ void Lora::readBuf(uint8_t reg, uint8_t *buf, uint8_t len)
     digitalWrite(CS_PIN, HIGH);
 }
 
-void Lora::onDIO0Interrupt()
+void lora::on_dio0_interrupt()
 {
-    //uint8_t previousState = readReg(REG_OP_MODE);
-    writeReg(REG_OP_MODE, LORA_STANDBY_MODE);
-    uint8_t tmp = readReg(REG_IRQ_FLAGS);
+    //uint8_t previousState = read_reg(REG_OP_MODE);
+    write_reg(REG_OP_MODE, LORA_STANDBY_MODE);
+    uint8_t tmp = read_reg(REG_IRQ_FLAGS);
     if((tmp & IRQ_RX_TIMEOUT_MASK) != 0 && _timeout != NULL)
     {
         _timeout();
@@ -432,11 +432,11 @@ void Lora::onDIO0Interrupt()
         _txDone();
     }
     // clear interrupt flags
-    writeReg(REG_IRQ_FLAGS, 0xFF);
-    //writeReg(REG_OP_MODE, previousState);
+    write_reg(REG_IRQ_FLAGS, 0xFF);
+    //write_reg(REG_OP_MODE, previousState);
 }
 
-void Lora::reset()
+void lora::reset()
 {
     pinMode(RST_PIN, OUTPUT);
     digitalWrite(RST_PIN, LOW);

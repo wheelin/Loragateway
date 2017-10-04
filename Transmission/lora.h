@@ -133,43 +133,43 @@
 #define        BW_500		                    ((uint8_t)0x09)
 
 //LORA CODING RATE:
-#define CR_5  ((uint8_t)0x01)	// CR = 4/5
-#define CR_6  ((uint8_t)0x02)	// CR = 4/6
-#define CR_7  ((uint8_t)0x03)	// CR = 4/7
-#define CR_8  ((uint8_t)0x04)	// CR = 4/8
+#define        CR_5                             ((uint8_t)0x01)	// CR = 4/5
+#define        CR_6                             ((uint8_t)0x02)	// CR = 4/6
+#define        CR_7                             ((uint8_t)0x03)	// CR = 4/7
+#define        CR_8                             ((uint8_t)0x04)	// CR = 4/8
 
 //LORA SPREADING FACTOR:
-#define SF_7  ((uint8_t)0x07)
-#define SF_8  ((uint8_t)0x08)
-#define SF_9  ((uint8_t)0x09)
-#define SF_10  ((uint8_t)0x0A)
-#define SF_11  ((uint8_t)0x0B)
-#define SF_12  ((uint8_t)0x0C)
+#define        SF_7                             ((uint8_t)0x07)
+#define        SF_8                             ((uint8_t)0x08)
+#define        SF_9                             ((uint8_t)0x09)
+#define        SF_10                            ((uint8_t)0x0A)
+#define        SF_11                            ((uint8_t)0x0B)
+#define        SF_12                            ((uint8_t)0x0C)
 
 //LORA MODES:
-#define LORA_SLEEP_MODE  ((uint8_t)0x80)
-#define LORA_STANDBY_MODE  ((uint8_t)0x81)
-#define LORA_FREQ_TX_SYNTH_MODE ((uint8_t)0x82)
-#define LORA_TX_MODE  ((uint8_t)0x83)
-#define LORA_FREQ_RX_SYNTH_MODE ((uint8_t)0x84)
-#define LORA_RX_MODE  ((uint8_t)0x85)
-#define LORA_RX_SINGLE_MODE ((uint8_t)0x86)
-#define LORA_CAD_DETECTION_MODE ((uint8_t)0x87)
-#define LORA_STANDBY_FSK_REGS_MODE  ((uint8_t)0xC1)
+#define        LORA_SLEEP_MODE                  ((uint8_t)0x80)
+#define        LORA_STANDBY_MODE                ((uint8_t)0x81)
+#define        LORA_FREQ_TX_SYNTH_MODE          ((uint8_t)0x82)
+#define        LORA_TX_MODE                     ((uint8_t)0x83)
+#define        LORA_FREQ_RX_SYNTH_MODE          ((uint8_t)0x84)
+#define        LORA_RX_MODE                     ((uint8_t)0x85)
+#define        LORA_RX_SINGLE_MODE              ((uint8_t)0x86)
+#define        LORA_CAD_DETECTION_MODE          ((uint8_t)0x87)
+#define        LORA_STANDBY_FSK_REGS_MODE       ((uint8_t)0xC1)
 
 //DIVERS MASKS
-#define MAX_DATA_LEN 256
-#define PREAMBLE_LEN 0x0008
-#define IRQ_RX_TIMEOUT_MASK 0x80
-#define IRQ_RX_DONE_MASK 0x40
-#define IRQ_PAYLOAD_CRC_ERROR_MASK 0x20
-#define IRQ_VALID_HEADER_MASK 0x10
-#define IRQ_TX_DONE_MASK 0x08
-#define IRQ_CAD_DONE_MASK 0x04
-#define IRQ_FHSS_CHANGE_CHANNEL_MASK 0x02
-#define IRQ_CAD_DETECT_MASK 0x01
-#define DIO0_FN_RX_DONE 0x00
-#define DIO0_FN_TX_DONE 0x01
+#define        MAX_DATA_LEN                     256
+#define        PREAMBLE_LEN                     0x0008
+#define        IRQ_RX_TIMEOUT_MASK              ((uint8_t)0x80)
+#define        IRQ_RX_DONE_MASK                 ((uint8_t)0x40)
+#define        IRQ_PAYLOAD_CRC_ERROR_MASK       ((uint8_t)0x20)
+#define        IRQ_VALID_HEADER_MASK            ((uint8_t)0x10)
+#define        IRQ_TX_DONE_MASK                 ((uint8_t)0x08)
+#define        IRQ_CAD_DONE_MASK                ((uint8_t)0x04)
+#define        IRQ_FHSS_CHANGE_CHANNEL_MASK     ((uint8_t)0x02)
+#define        IRQ_CAD_DETECT_MASK              ((uint8_t)0x01)
+#define        DIO0_FN_RX_DONE                  ((uint8_t)0x00)
+#define        DIO0_FN_TX_DONE                  ((uint8_t)0x01)
 
 typedef void (*callback)(void);
 
@@ -177,64 +177,63 @@ class Lora
 {
 public:
 
-    Lora();
+    lora();
 
     int on();
     int off();
 
-    int setMainParameters(uint32_t chan, uint8_t bandwidth,
-                          uint8_t codingRate, uint8_t spreadingFactor);
-    int enableCRCCheck(bool state);
-    int enableImplicitHeader(bool state);
-    int setOutputPower(int pwrdB);
+    int set_main_parameters(uint32_t ch, uint8_t bw, uint8_t cr, uint8_t sf);
+    int enable_crc_check(bool state);
+    int enable_implicit_header(bool state);
+    int set_output_power(int pwrdB);
 
-    int setMode(uint8_t mode);
+    int set_mode(uint8_t mode);
+    int get_mode();
 
-    int getMode();
-
-    int setCallbacks(void (*txDone)(), void (*rxDone)(), void (*timeout)());
-    pthread_t timerThread;
-    static void *timerThreadFunction(void * timeout);
+    int set_callbacks(void (*tx_done)(), void (*rx_done)(), void (*timeout)());
 
     int send(uint8_t *buf, uint8_t length);
-    int setInTimedReceiveMode(uint32_t timeout);
-    int setInContinuousReceiveMode();
-    int getReceivedData(uint8_t * data);
+    int listen_timeout(uint32_t timeout);
+    int listen();
+    int stop_listening();
+    int get_received_data(uint8_t * data);
 
-    int getSNR();
-    int getPktRSSI();
-    int getRSSI();
+    int get_snr();
+    int get_pkt_rssi();
+    int get_rssi();
 
-    void setDio0Mapping(uint8_t fn);
-    static void onDIO0Interrupt(void);
-    static void writeReg(uint8_t reg, uint8_t data);
-    static void writeBuf(uint8_t reg, uint8_t * buf, uint8_t len);
-    static uint8_t readReg(uint8_t reg);
-    void readBuf(uint8_t reg, uint8_t * buf, uint8_t len);
+    void set_dio0_mapping(uint8_t fn);
+    static void on_dio0_interrupt(void);
+    static void write_reg(uint8_t reg, uint8_t data);
+    static void write_buf(uint8_t reg, uint8_t * buf, uint8_t len);
+    static uint8_t read_reg(uint8_t reg);
+    void read_buf(uint8_t reg, uint8_t * buf, uint8_t len);
     void reset();
 
 private:
-    uint32_t _channel;
-    uint8_t _bandwidth;
-    uint8_t _codingRate;
-    uint8_t _spreadingFactor;
-    bool    _CRCCheckEnabled;
-    bool    _implicitHeaderEnabled;
-    int     _pwrdB;
-    bool    _continuousReceivingEnabled;
-    int     _spiFd;
-    int     _symbRate;
+    pthread_t       timer_thread;
+    static void *   timer_thread_fn(void * timeout);
+    uint32_t        ch;
+    uint8_t         bw;
+    uint8_t         cr;
+    uint8_t         sf;
+    bool            crc_check_enabled;
+    bool            implicit_header_enabled;
+    int             pwr_db;
+    bool            listening;
+    int             spi_fd;
+    int             symb_rate;
 
-    int     _snr;
-    int     _pktRssi;
-    int     _rssi;
+    int             snr;
+    int             pkt_rssi;
+    int             rssi;
 
-    static void (*_txDone)(void);
-    static void (*_rxDone)(void);
-    static void (*_timeout)(void);
+    static void     (*tx_done)(void);
+    static void     (*rx_done)(void);
+    static void     (*timeout)(void);
 
-    uint8_t _lastReceivedBuffer[MAX_DATA_LEN];
-    uint8_t _lastSentBuffer[MAX_DATA_LEN];
+    uint8_t         last_recv_buf[MAX_DATA_LEN];
+    uint8_t         last_sent_buf[MAX_DATA_LEN];
 };
 
 
