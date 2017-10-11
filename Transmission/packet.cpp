@@ -20,31 +20,31 @@
 
 #define PAYLOAD_START           10
 
-Packet::Packet()
+packet::packet()
 {
 }
 
-void Packet::setSrcAddress(uint8_t src)
+void packet::set_src_address(uint8_t src)
 {
     _buffer[SRC_FIELD] = src;
 }
 
-uint8_t Packet::getSrcAddress()
+uint8_t packet::get_src_address()
 {
     return _buffer[SRC_FIELD];
 }
 
-void Packet::setDstAddress(uint8_t dst)
+void packet::set_dst_address(uint8_t dst)
 {
     _buffer[DST_FIELD] = dst;
 }
 
-uint8_t Packet::getDstAddress()
+uint8_t packet::get_dst_address()
 {
     return _buffer[DST_FIELD];
 }
 
-void Packet::setTimestamp(uint32_t timestamp)
+void packet::set_timestamp(uint32_t timestamp)
 {
     _buffer[TIMESTAMP_FIELD]     =  ((uint8_t)((timestamp >> 24) && 0xFF));
     _buffer[TIMESTAMP_FIELD + 1] =  ((uint8_t)((timestamp >> 16) && 0xFF));
@@ -52,7 +52,7 @@ void Packet::setTimestamp(uint32_t timestamp)
     _buffer[TIMESTAMP_FIELD + 3] =  ((uint8_t)((timestamp)       && 0xFF));
 }
 
-uint32_t Packet::getTimestamp()
+uint32_t packet::get_timestamp()
 {
     return  (((uint32_t)_buffer[TIMESTAMP_FIELD])     << 24) +
             (((uint32_t)_buffer[TIMESTAMP_FIELD + 1]) << 16) +
@@ -60,7 +60,7 @@ uint32_t Packet::getTimestamp()
             (((uint32_t)_buffer[TIMESTAMP_FIELD + 3]));
 }
 
-void Packet::setAsACK(bool ack)
+void packet::set_as_ACK(bool ack)
 {
     if(ack)
     {
@@ -72,7 +72,7 @@ void Packet::setAsACK(bool ack)
     }
 }
 
-bool Packet::isACK()
+bool packet::is_ACK()
 {
     if((_buffer[FLAG_FIELD] & FLG_ACK_MASK) != 0)
     {
@@ -84,9 +84,9 @@ bool Packet::isACK()
     }
 }
 
-void Packet::setPacketIDToAcknowledge(uint16_t pktID)
+void packet::set_packet_ID_to_acknowledge(uint16_t pktID)
 {
-    if(isACK())
+    if(is_ACK())
     {
         _buffer[PAYLOAD_START] = ((uint8_t)(pktID >> 8));
         _buffer[PAYLOAD_START + 1] = ((uint8_t)(pktID));
@@ -94,10 +94,10 @@ void Packet::setPacketIDToAcknowledge(uint16_t pktID)
     }
 }
 
-uint16_t Packet::getPacketIDToAcknowledge()
+uint16_t packet::get_packet_ID_to_acknowledge()
 {
     uint16_t id;
-    if(isACK())
+    if(is_ACK())
     {
         id = (((uint16_t)_buffer[PAYLOAD_START]) << 8);
         id += ((uint16_t)_buffer[PAYLOAD_START + 1]);
@@ -106,7 +106,7 @@ uint16_t Packet::getPacketIDToAcknowledge()
     return 0;
 }
 
-void Packet::setACKOnNextPacketRequired(bool required)
+void packet::set_ACK_on_next_packet_required(bool required)
 {
     if(required)
     {
@@ -118,7 +118,7 @@ void Packet::setACKOnNextPacketRequired(bool required)
     }
 }
 
-bool Packet::isACKOnPacketRequired()
+bool packet::is_ACK_on_packet_required()
 {
     if((_buffer[FLAG_FIELD] & FLG_ACK_NXT_PKT_MASK) != 0)
     {
@@ -130,7 +130,7 @@ bool Packet::isACKOnPacketRequired()
     }
 }
 
-void Packet::setAsLastSessionPacket(bool last)
+void packet::set_as_last_session_packet(bool last)
 {
     if(last)
     {
@@ -142,7 +142,7 @@ void Packet::setAsLastSessionPacket(bool last)
     }
 }
 
-bool Packet::isLastSessionPacket()
+bool packet::is_last_session_packet()
 {
     if((_buffer[FLAG_FIELD] & FLG_LAST_PKT_MASK) != 0)
     {
@@ -154,49 +154,49 @@ bool Packet::isLastSessionPacket()
     }
 }
 
-void Packet::setPacketID(uint16_t id)
+void packet::set_packet_ID(uint16_t id)
 {
     _buffer[PACKET_ID_FIELD]        = (uint8_t)((id >> 8) & 0xFF);
     _buffer[PACKET_ID_FIELD + 1]    = (uint8_t)(id & 0xFF);
 }
 
-uint8_t Packet::getPacketLength()
+uint8_t packet::get_packet_length()
 {
     return _buffer[PAYLOAD_LENGTH_FIELD] + PAYLOAD_START;
 }
 
-uint8_t Packet::getPayloadLength()
+uint8_t packet::get_payload_length()
 {
     return _buffer[PAYLOAD_LENGTH_FIELD];
 }
 
-uint16_t Packet::getPacketID()
+uint16_t packet::get_packet_ID()
 {
     return ((uint16_t)(_buffer[PACKET_ID_FIELD << 8]) + (uint16_t)(_buffer[PACKET_ID_FIELD + 1]));
 }
 
-uint8_t * Packet::getBufferPtr()
+uint8_t * packet::get_buffer_ptr()
 {
     return _buffer;
 }
 
-uint8_t Packet::setPayload(uint8_t * buf, uint8_t len)
+uint8_t packet::set_payload(uint8_t * buf, uint8_t len)
 {
     if(len >= (MAX_PACKET_LEN - PAYLOAD_START))
     {
         return -1;
     }
     _buffer[PAYLOAD_LENGTH_FIELD] = len;
-    memcpy(getPayloadPtr(), buf, len);
+    memcpy(get_payload_ptr(), buf, len);
     return 0;
 }
 
-uint8_t * Packet::getPayloadPtr()
+uint8_t * packet::get_payload_ptr()
 {
     return &_buffer[PAYLOAD_START];
 }
 
-void Packet::clearPayload()
+void packet::clear_payload()
 {
     memset(&_buffer[PAYLOAD_START], 0, MAX_PACKET_LEN - PAYLOAD_START);
     _buffer[PAYLOAD_LENGTH_FIELD] = 0;

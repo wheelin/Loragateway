@@ -8,9 +8,9 @@
 #include <pthread.h>
 #include <unistd.h>
 
-void (*lora::_txDone)() = 0;
-void (*lora::_rxDone)() = 0;
-void (*lora::_timeout)() = 0;
+void (*lora::tx_done)() = 0;
+void (*lora::rx_done)() = 0;
+void (*lora::timeout)() = 0;
 
 lora::lora()
 {
@@ -35,7 +35,7 @@ int lora::on()
     pinMode(CS_PIN, OUTPUT);
     digitalWrite(CS_PIN, HIGH);
     pinMode(RST_PIN, INPUT);
-    wiringPiISR(DIO0_PIN, INT_EDGE_RISING, onDIO0Interrupt);
+    wiringPiISR(DIO0_PIN, INT_EDGE_RISING, on_dio0_interrupt);
 
     memset(last_recv_buf, 0, MAX_DATA_LEN);
     memset(last_sent_buf, 0, MAX_DATA_LEN);
@@ -110,11 +110,11 @@ int lora::set_main_parameters(uint32_t ch, uint8_t bw,
         tmp &= 0x0F;
         tmp |= (bw << 4);
         tmp &= 0xF1;
-        tmp |= (codingRate << 1);
+        tmp |= (cr << 1);
         write_reg(REG_MODEM_CONFIG1, tmp);
 
         this->bw = bw;
-        this->cr = codingRate;
+        this->cr = cr;
     }
 
     if(sf < SF_7 || sf > SF_12)
@@ -130,7 +130,7 @@ int lora::set_main_parameters(uint32_t ch, uint8_t bw,
         this->sf = sf;
     }
 
-    switch (bandwidth) {
+    switch (bw) {
     case BW_125:
         symb_rate = 125000/pow(2, (double)(sf));
         break;
@@ -195,7 +195,7 @@ int lora::set_output_power(int pwrdB)
     tmp &= 0xF0;
     tmp |= (out & 0x0F);
     write_reg(REG_PA_CONFIG, tmp);
-    _pwrdB = pwrdB;
+    this->pwr_db = pwrdB;
     return 0;
 }
 
@@ -222,8 +222,8 @@ int lora::get_mode()
 
 int lora::set_callbacks(void (*tx_done)(void), void (*rx_done)(void), void (*timeout)(void))
 {
-    lora::tx_done = txDone;
-    lora::rx_done = rxDone;
+    lora::tx_done = tx_done;
+    lora::rx_done = rx_done;
     lora::timeout = timeout;
     return 0;
 }
@@ -232,7 +232,7 @@ void *lora::timer_thread_fn(void *timeout)
 {
     uint32_t tm = (uint32_t)timeout;
     usleep(tm * 1000);
-    timeout();
+    lora::timeout();
     pthread_exit(0);
 }
 
@@ -250,7 +250,7 @@ int lora::send(uint8_t *buf, uint8_t length)
     // write data into the fifo at address 0x00
     write_reg(REG_FIFO_TX_BASE_ADDR, 0x00);
     write_reg(REG_FIFO_ADDR_PTR, 0x00);
-    writeBuf(REG_FIFO, buf, length);
+    write_buf(REG_FIFO, buf, length);
 
     // set dio mapped to function txDone
     set_dio0_mapping(DIO0_FN_TX_DONE);
@@ -277,7 +277,7 @@ int lora::listen_timeout(uint32_t timeout)
     write_reg(REG_OP_MODE, LORA_RX_MODE);
 
     // launch timer thread
-    ret = pthread_create(&timerThread, NULL, timerThreadFunction, ((void *)timeout));
+    ret = pthread_create(&timer_thread, NULL, timer_thread_fn, ((void *)timeout));
     if(ret)
     {
         write_reg(REG_OP_MODE, LORA_STANDBY_MODE);
@@ -296,7 +296,7 @@ int lora::listen()
     // set fifo address pointer at 0x00
     write_reg(REG_FIFO_ADDR_PTR, 0x00);
     // set dio0 function to rxDone
-    setDio0Mapping(DIO0_FN_RX_DONE);
+    set_dio0_mapping(DIO0_FN_RX_DONE);
 
     // clear all irq flags
     write_reg(REG_IRQ_FLAGS, 0x00);
@@ -419,17 +419,17 @@ void lora::on_dio0_interrupt()
     //uint8_t previousState = read_reg(REG_OP_MODE);
     write_reg(REG_OP_MODE, LORA_STANDBY_MODE);
     uint8_t tmp = read_reg(REG_IRQ_FLAGS);
-    if((tmp & IRQ_RX_TIMEOUT_MASK) != 0 && _timeout != NULL)
+    if((tmp & IRQ_RX_TIMEOUT_MASK) != 0 && lora::timeout != NULL)
     {
-        _timeout();
+        lora::timeout();
     }
-    else if((tmp & IRQ_RX_DONE_MASK) != 0 && _rxDone != NULL)
+    else if((tmp & IRQ_RX_DONE_MASK) != 0 && lora::rx_done != NULL)
     {
-        _rxDone();
+        lora::rx_done();
     }
-    else if((tmp & IRQ_TX_DONE_MASK) != 0 && _txDone != NULL)
+    else if((tmp & IRQ_TX_DONE_MASK) != 0 && lora::tx_done != NULL)
     {
-        _txDone();
+        lora::tx_done();
     }
     // clear interrupt flags
     write_reg(REG_IRQ_FLAGS, 0xFF);

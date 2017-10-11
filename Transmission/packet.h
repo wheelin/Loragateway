@@ -6,42 +6,42 @@
 #define MAX_PACKET_LEN          256
 #define FIELDS_NUMBER           6
 
-class Packet
+class packet
 {
 public:
-    Packet();
+    packet();
 
-    void        setSrcAddress(uint8_t src);
-    uint8_t     getSrcAddress();
+    void        set_src_address(uint8_t src);
+    uint8_t     get_src_address();
 
-    void        setDstAddress(uint8_t dst);
-    uint8_t     getDstAddress();
+    void        set_dst_address(uint8_t dst);
+    uint8_t     get_dst_address();
 
-    void        setTimestamp(uint32_t timestamp);
-    uint32_t    getTimestamp();
+    void        set_timestamp(uint32_t timestamp);
+    uint32_t    get_timestamp();
 
-    void        setAsACK(bool ack);
-    bool        isACK();
-    void        setPacketIDToAcknowledge(uint16_t pktID);
-    uint16_t    getPacketIDToAcknowledge();
-    void        setACKOnNextPacketRequired(bool required);
-    bool        isACKOnPacketRequired();
+    void        set_as_ACK(bool ack);
+    bool        is_ACK();
+    void        set_packet_ID_to_acknowledge(uint16_t pktID);
+    uint16_t    get_packet_ID_to_acknowledge();
+    void        set_ACK_on_next_packet_required(bool required);
+    bool        is_ACK_on_packet_required();
 
-    void        setAsLastSessionPacket(bool last);
-    bool        isLastSessionPacket();
+    void        set_as_last_session_packet(bool last);
+    bool        is_last_session_packet();
 
-    void        setPacketID(uint16_t id);
-    uint16_t    getPacketID();
+    void        set_packet_ID(uint16_t id);
+    uint16_t    get_packet_ID();
 
-    uint8_t     getPacketLength();
-    uint8_t     getPayloadLength();
+    uint8_t     get_packet_length();
+    uint8_t     get_payload_length();
 
-    uint8_t *   getBufferPtr();
+    uint8_t *   get_buffer_ptr();
 
-    uint8_t     setPayload(uint8_t * buf, uint8_t len);
-    uint8_t *   getPayloadPtr();
+    uint8_t     set_payload(uint8_t * buf, uint8_t len);
+    uint8_t *   get_payload_ptr();
 
-    void        clearPayload();
+    void        clear_payload();
 protected:
     uint8_t     _buffer[MAX_PACKET_LEN];
 };

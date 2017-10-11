@@ -4,8 +4,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "Transmission/gwloramac.h"
+#include "Transmission/packet.h"
 
 using namespace std;
 
@@ -28,6 +30,8 @@ void errorCallback(uint8_t errCode);
 uint8_t nodeAddress;
 uint8_t dataLength;
 
+// data packet
+uint8_t data[256];
 
 // variables modified by the callbacks
 volatile bool looping;
@@ -42,21 +46,38 @@ int main()
 {
     looping = true;
     signal(SIGINT, onSignalReception);
-    GwLoraMac::instance().initialize(txDoneCallback, rxDoneCallback, errorCallback);
+    gw_lora_mac::instance().initialize(txDoneCallback, rxDoneCallback, errorCallback);
 
     while (looping)
     {
         if(packetReceived)
         {
+            packetReceived = false;
             // handle packet here
-            GwLoraMac::instance().getLastData(nodeAddress, pktData.getData(), dataLength);
-            
+            gw_lora_mac::instance().get_last_data(nodeAddress, data, dataLength);
+            int snr = gw_lora_mac::instance().get_snr();
+            int pkt_rssi = gw_lora_mac::instance().get_pkt_rssi();
+            int rssi = gw_lora_mac::instance().get_rssi();
+            printf("========== From node 0x%02x =============\n", nodeAddress);
+            printf("SNR : %d dB\n", snr);
+            printf("Packet RSSI = %d dB\n", pkt_rssi);
+            printf("RSSI = %d dB\n", rssi);
+
+            printf("Received packet contains : \n");
+            for(int i = 0; i < dataLength - 1; i++)
+            {
+                printf("%d) 0x%02X, ", i, data[i]);
+            }
+            printf("%d) 0x%02X\n", dataLength - 1, data[dataLength - 1]);
+            printf("%s\n", data);
+            memset(data, 0, 256);
         }
         if(errorHasHappened)
         {
             errorHasHappened = false;
             packetReceived = false;
         }
+        usleep(10000);
     }
     return 0;
 }

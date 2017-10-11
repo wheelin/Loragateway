@@ -171,9 +171,8 @@
 #define        DIO0_FN_RX_DONE                  ((uint8_t)0x00)
 #define        DIO0_FN_TX_DONE                  ((uint8_t)0x01)
 
-typedef void (*callback)(void);
 
-class Lora
+class lora
 {
 public:
 

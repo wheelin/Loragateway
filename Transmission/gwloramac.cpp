@@ -7,255 +7,247 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void (*GwLoraMac::_appTxDone)() = 0;
-void (*GwLoraMac::_appRxDone)() = 0;
-void (*GwLoraMac::_appError)(uint8_t err) = 0;
+void (*gw_lora_mac::_app_tx_done)() = 0;
+void (*gw_lora_mac::_app_rx_done)() = 0;
+void (*gw_lora_mac::_app_error)(uint8_t err) = 0;
 
-GwLoraMac::GwLoraMac()
+gw_lora_mac::gw_lora_mac()
 {
 }
 
-GwLoraMac &GwLoraMac::instance()
+gw_lora_mac &gw_lora_mac::instance()
 {
-    static GwLoraMac INSTANCE;
+    static gw_lora_mac INSTANCE;
     return INSTANCE;
 }
 
-void GwLoraMac::initialize(void (*appTxDone)(), void (*appRxDone)(),
-                           void (*appError)(uint8_t))
+void gw_lora_mac::initialize(void (*atd)(), void (*ard)(),
+                           void (*ae)(uint8_t))
 {
     int ret;
-    GwLoraMac::_appTxDone = appTxDone;
-    GwLoraMac::_appRxDone = appRxDone;
-    GwLoraMac::_appError = appError;
+    gw_lora_mac::_app_tx_done = atd;
+    gw_lora_mac::_app_rx_done = ard;
+    gw_lora_mac::_app_error = ae;
 
     if((ret = _radio.on()))
     {
-        printf("cannot initialize radio : %d", ret);
         exit(-1);
     }
-    if((ret = _radio.setMainParameters(CH_11_868, BW_500, CR_5, SF_12)) != 0)
+    if((ret = _radio.set_main_parameters(CH_11_868, BW_500, CR_5, SF_12)) != 0)
     {
-        printf("cannot set radio main parameters. Code error : %d", ret);
         exit(-1);
     }
-    if((ret = _radio.enableCRCCheck(true)) != 0)
+    if((ret = _radio.enable_crc_check(true)) != 0)
     {
-        printf("Cannot enable crc check : %d", ret);
         exit(-1);
     }
-    if((ret = _radio.enableImplicitHeader(false)) != 0)
+    if((ret = _radio.enable_implicit_header(false)) != 0)
     {
-        printf("Cannot disable implicit header : %d", ret);
         exit(-1);
     }
-    if((ret = _radio.setOutputPower(15)) != 0)
+    if((ret = _radio.set_output_power(15)) != 0)
     {
-        printf("Cannot set output power : %d", ret);
         exit(-1);
     }
-    if((ret = _radio.setCallbacks(_macTxDone, _macRxDone, _macTimeout)) != 0)
+    if((ret = _radio.set_callbacks(_mac_tx_done, _mac_rx_done, _mac_timeout)) != 0)
     {
-        printf("Cannot set callbacks : %d", ret);
         exit(-1);
     }
 
     listen();
 }
 
-bool GwLoraMac::pushData(uint8_t destAddr, uint8_t *data, uint8_t len)
+bool gw_lora_mac::push_data(uint8_t destAddr, uint8_t *data, uint8_t len)
 {
-    Packet pkt;
-    pkt.setDstAddress(destAddr);
-    pkt.setTimestamp((uint32_t)time(0));
-    pkt.setPacketID(_currentPktID[destAddr]++);
-    pkt.setACKOnNextPacketRequired(true);
-    pkt.setAsACK(false);
-    pkt.clearPayload();
-    pkt.setSrcAddress(GW_ADDR);
-    pkt.setAsLastSessionPacket(true);
-    pkt.setPayload(data, len);
+    packet pkt;
+    pkt.set_dst_address(destAddr);
+    pkt.set_timestamp((uint32_t)time(0));
+    pkt.set_packet_ID(_current_pkt_ID[destAddr]++);
+    pkt.set_ACK_on_next_packet_required(true);
+    pkt.set_as_ACK(false);
+    pkt.clear_payload();
+    pkt.set_src_address(GW_ADDR);
+    pkt.set_as_last_session_packet(true);
+    pkt.set_payload(data, len);
 
-    if(!_packetsForClientFifo[destAddr].pushPacket(&pkt))
+    if(!_packets_for_client_fifo[destAddr].push_packet(&pkt))
     {
-        printf("fifo %d is full of messages", destAddr);
-        if(_appError != NULL)
+        if(_app_error != NULL)
         {
-            _appError(ERR_FULL_FIFO);
+            _app_error(ERR_FULL_FIFO);
         }
         return false;
     }
     return true;
 }
 
-void GwLoraMac::getLastData(uint8_t &srcAddr, uint8_t * data, uint8_t &len)
+void gw_lora_mac::get_last_data(uint8_t &srcAddr, uint8_t * data, uint8_t &len)
 {
-    printf("getting packet into application space");
-    srcAddr = instance()._recvPacket.getSrcAddress();
-    printf("srcAddr : 0x%02x", srcAddr);
-    len = instance()._recvPacket.getPayloadLength();
-    printf("len : %d bytes", len);
-    memcpy(data, instance()._recvPacket.getPayloadPtr(), len);
-    printf("finished getting packet into application space");
+    srcAddr = instance()._recv_packet.get_src_address();
+    len = instance()._recv_packet.get_payload_length();
+    memcpy(data, instance()._recv_packet.get_payload_ptr(), len);
 }
 
-void GwLoraMac::listen()
+void gw_lora_mac::listen()
 {
-    _radio.setInContinuousReceiveMode();
+    _radio.listen();
 }
 
-GwLoraMac::RadioState GwLoraMac::getRadioMode()
+gw_lora_mac::radio_state_t gw_lora_mac::get_radio_mode()
 {
-    int rm = _radio.getMode();
+    int rm = _radio.get_mode();
     switch(rm)
     {
     case LORA_CAD_DETECTION_MODE:
-        return RadioState::CAD;
+        return radio_state_t::CAD;
     case LORA_FREQ_RX_SYNTH_MODE:
-        return RadioState::FSRx;
+        return radio_state_t::FSRx;
     case LORA_FREQ_TX_SYNTH_MODE:
-        return RadioState::FSTx;
+        return radio_state_t::FSTx;
     case LORA_RX_MODE:
-        return RadioState::RxContinuous;
+        return radio_state_t::RxContinuous;
     case LORA_RX_SINGLE_MODE:
-        return RadioState::RxSingle;
+        return radio_state_t::RxSingle;
     case LORA_SLEEP_MODE:
-        return RadioState::Sleep;
+        return radio_state_t::Sleep;
     case LORA_STANDBY_MODE:
-        return RadioState::Stand_by;
+        return radio_state_t::Stand_by;
     case LORA_TX_MODE:
-        return RadioState::Tx;
+        return radio_state_t::Tx;
     }
-    return RadioState::Undefined;
+    return radio_state_t::Undefined;
 }
 
-void GwLoraMac::_macTxDone()
+void gw_lora_mac::_mac_tx_done()
 {
-    printf("Entering tx done call back");
-    if(instance()._packetOnWaiting)
+    if(instance()._packet_on_waiting)
     { // send packet when the radio module is ready
-        instance()._packetOnWaiting = false;
-        instance()._sendPacket[instance()._addressOfClientWaitingForPacket].setTimestamp((uint32_t)time(0));
-        instance()._radio.send(instance()._sendPacket[instance()._addressOfClientWaitingForPacket].getBufferPtr(),
-                                         instance()._sendPacket[instance()._addressOfClientWaitingForPacket].getPacketLength());
-        instance()._nextPktIsACK[instance()._addressOfClientWaitingForPacket] = true;
+        instance()._packet_on_waiting = false;
+        instance()._sent_packet[instance()._address_of_client_waiting_for_packet].set_timestamp((uint32_t)time(0));
+        instance()._radio.send(instance()._sent_packet[instance()._address_of_client_waiting_for_packet].get_buffer_ptr(),
+                                         instance()._sent_packet[instance()._address_of_client_waiting_for_packet].get_packet_length());
+        instance()._next_pkt_is_ACK[instance()._address_of_client_waiting_for_packet] = true;
         return;
     }
-    if(_appTxDone != NULL)
+    if(_app_tx_done != NULL)
     {
-        _appTxDone();
+        _app_tx_done();
     }
     instance().listen();
 }
 
-void GwLoraMac::_macRxDone()
+void gw_lora_mac::_mac_rx_done()
 {
-    bool receivedPacketForApp = false;
+    bool received_packet_for_app = false;
     int ret = 0;
-    Packet pkt;
-    if((ret = instance()._radio.getReceivedData(pkt.getBufferPtr())) != 0)
+    packet pkt;
+    if((ret = instance()._radio.get_received_data(pkt.get_buffer_ptr())) != 0)
     {
-        printf("cannot receive data from the radio module : %d", ret);
-        if(_appError != NULL)
+        if(_app_error != NULL)
         {
-            _appError(ret);
+            _app_error(ret);
         }
         instance().listen();
         return;
     }
     else
     {
-        printf("packet received");
-        instance()._snr = instance()._radio.getSNR();
-        printf("Radio SNR : %d dBm", instance()._snr);
-        instance()._pktRssi = instance()._radio.getPktRSSI();
-        printf("Packet RSSI : %d dBm", instance()._pktRssi);
-        instance()._rssi = instance()._radio.getRSSI();
-        printf("RSSI : %d dBm", instance()._rssi);
+        instance()._snr = instance()._radio.get_snr();
+        instance()._pkt_rssi = instance()._radio.get_pkt_rssi();
+        instance()._rssi = instance()._radio.get_rssi();
     }
-    uint8_t currentAddr = pkt.getSrcAddress();
-    printf("packet received from node address : 0x%02x", currentAddr);
-    if(currentAddr > MAX_CLIENT_ADDRESS)
+    uint8_t current_addr = pkt.get_src_address();
+    if(current_addr > MAX_CLIENT_ADDRESS)
     {
-        printf("node address is invalid");
-        if(_appError != NULL)
+        if(_app_error != NULL)
         {
-            _appError(ERR_INVALID_ADDR);
+            _app_error(ERR_INVALID_ADDR);
         }
         instance().listen();
         return;
     }
-    uint8_t currentNodeIdx = currentAddr - 1;
-    if(pkt.isACK() && !instance()._nextPktIsACK[currentNodeIdx])
+    uint8_t current_node_idx = current_addr - 1;
+    if(pkt.is_ACK() && !instance()._next_pkt_is_ACK[current_node_idx])
     { // ack expected but no ack came back
-        printf("ACK expected but packet was not ack");
-        if(_appError != NULL)
+        if(_app_error != NULL)
         {
-            _appError(ERR_ACK_NOT_EXPECTED_BUT_RECV);
+            _app_error(ERR_ACK_NOT_EXPECTED_BUT_RECV);
         }
         instance().listen();
         return;
     }
-    else if(!pkt.isACK() && instance()._nextPktIsACK[currentNodeIdx])
+    else if(!pkt.is_ACK() && instance()._next_pkt_is_ACK[current_node_idx])
     { // ack not expected but received
-        printf("ack not expected but received");
-        if(_appError != NULL)
+        if(_app_error != NULL)
         {
-            _appError(ERR_ACK_EXPECTED_BUT_NOT_RECV);
+            _app_error(ERR_ACK_EXPECTED_BUT_NOT_RECV);
         }
         instance().listen();
         return;
     }
-    else if(pkt.isACK() && instance()._nextPktIsACK[currentNodeIdx])
+    else if(pkt.is_ACK() && instance()._next_pkt_is_ACK[current_node_idx])
     { // ack expected and received. this is end of this session
-        printf("ACK has been received and was expected");
         instance().listen();
         return;
     }
     else
     { // this is a data packet, so we put this as the next packet handled by the application
-        printf("data packet received correctly, ID : %d", pkt.getPacketID());
-        memcpy(instance()._recvPacket.getBufferPtr(), pkt.getBufferPtr(), pkt.getPacketLength());
-        receivedPacketForApp = true;
+        memcpy(instance()._recv_packet.get_buffer_ptr(), pkt.get_buffer_ptr(), pkt.get_packet_length());
+        received_packet_for_app = true;
     }
 
-    instance()._sendPacket[currentNodeIdx].clearPayload();
-    instance()._sendPacket[currentNodeIdx].setDstAddress(currentAddr);
-    instance()._sendPacket[currentNodeIdx].setSrcAddress(GW_ADDR+1);
-    instance()._sendPacket[currentNodeIdx].setAsACK(true);
-    instance()._sendPacket[currentNodeIdx].setTimestamp((uint32_t)time(0));
-    uint8_t id[] = {(uint8_t)((pkt.getPacketID() >> 8) & 0xFF), (uint8_t)((pkt.getPacketID()) & 0xFF)};
-    instance()._sendPacket[currentNodeIdx].setPayload(id, 2);
-    if(instance()._packetsForClientFifo[currentNodeIdx].isEmpty())
+    instance()._sent_packet[current_node_idx].clear_payload();
+    instance()._sent_packet[current_node_idx].set_dst_address(current_addr);
+    instance()._sent_packet[current_node_idx].set_src_address(GW_ADDR+1);
+    instance()._sent_packet[current_node_idx].set_as_ACK(true);
+    instance()._sent_packet[current_node_idx].set_timestamp((uint32_t)time(0));
+    uint8_t id[] = {(uint8_t)((pkt.get_packet_ID() >> 8) & 0xFF), (uint8_t)((pkt.get_packet_ID()) & 0xFF)};
+    instance()._sent_packet[current_node_idx].set_payload(id, 2);
+    if(instance()._packets_for_client_fifo[current_node_idx].is_empty())
     { // no packet has to be sent to the current client
       // so the gateway must send ACK_END to tell the client this conversation is
       // over.
-        printf("no packet for this node, sending ACK");
-        instance()._sendPacket[currentNodeIdx].setAsLastSessionPacket(true);
-        instance()._radio.send(instance()._sendPacket[currentNodeIdx].getBufferPtr(), instance()._sendPacket[currentNodeIdx].getPacketLength());
+        instance()._sent_packet[current_node_idx].set_as_last_session_packet(true);
+        instance()._radio.send(instance()._sent_packet[current_node_idx].get_buffer_ptr(),
+                               instance()._sent_packet[current_node_idx].get_packet_length());
     }
     else
     { // send ACK_NEND and then, set next packet to send as a waiting packet. It waits for the _ACK_NEND packet
       // to be sent by the radio module and then is is sent in the _macTxDone function
-        printf("Packet waiting, sending NEND_ACK");
-        instance()._sendPacket[currentNodeIdx].setAsLastSessionPacket(false);
-        instance()._radio.send(instance()._sendPacket[currentNodeIdx].getBufferPtr(), instance()._sendPacket[currentNodeIdx].getPacketLength());
+        instance()._sent_packet[current_node_idx].set_as_last_session_packet(false);
+        instance()._radio.send(instance()._sent_packet[current_node_idx].get_buffer_ptr(),
+                               instance()._sent_packet[current_node_idx].get_packet_length());
         // store the next packet into the packet to send container
-        instance()._packetOnWaiting = true;
-        instance()._packetsForClientFifo[currentNodeIdx].nextPacket(instance()._sendPacket[currentNodeIdx]);
+        instance()._packet_on_waiting = true;
+        instance()._packets_for_client_fifo[current_node_idx].next_packet(instance()._sent_packet[current_node_idx]);
     }
 
-    if(receivedPacketForApp)
+    if(received_packet_for_app)
     { // now, if a packet has been received, we advertise the application
-        receivedPacketForApp = false;
-        if(_appRxDone != NULL)
+        received_packet_for_app = false;
+        if(_app_rx_done != NULL)
         {
-            _appRxDone();
+            _app_rx_done();
         }
     }
 }
 
-void GwLoraMac::_macTimeout()
+void gw_lora_mac::_mac_timeout()
 {
-    GwLoraMac::_appError(ERR_TIMEOUT);
+    gw_lora_mac::_app_error(ERR_TIMEOUT);
+}
+
+int gw_lora_mac::get_snr()
+{
+    return instance()._snr;
+}
+
+int gw_lora_mac::get_pkt_rssi()
+{
+    return instance()._pkt_rssi;
+}
+
+int gw_lora_mac::get_rssi()
+{
+    return instance()._rssi;
 }

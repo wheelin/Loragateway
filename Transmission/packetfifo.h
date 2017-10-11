@@ -6,18 +6,18 @@
 
 #define MAX_FIFO_PKTS   20
 
-class PacketFifo
+class packet_fifo
 {
 public:
-    PacketFifo();
+    packet_fifo();
 
-    bool isEmpty();
-    bool pushPacket(Packet * pkt);
-    bool nextPacket(Packet &pkt);
+    bool is_empty();
+    bool push_packet(packet * pkt);
+    bool next_packet(packet &pkt);
 
 private:
-    Packet  _pktFifo[MAX_FIFO_PKTS];
-    bool    _freePkt[MAX_FIFO_PKTS];
+    packet  _pkt_fifo[MAX_FIFO_PKTS];
+    bool    _free_pkt[MAX_FIFO_PKTS];
 };
 
 #endif // PACKETFIFO_H
